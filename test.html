@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>응모</title>
+<style>
+  body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(135deg,#004aad,#007bff);color:#fff;text-align:center;height:100vh;display:flex;align-items:center;justify-content:center}
+  .container{background:rgba(255,255,255,0.12);padding:28px;border-radius:16px;width:340px;box-shadow:0 8px 30px rgba(0,0,0,0.2)}
+  input{width:88%;padding:10px;margin:8px 0;border-radius:8px;border:none}
+  button{padding:12px 22px;border-radius:30px;border:none;background:#ffd700;color:#004aad;font-weight:700;cursor:pointer;transition:all .25s}
+  .flash{animation:flash .9s ease}
+  @keyframes flash{0%{transform:scale(1)}50%{transform:scale(1.06)}100%{transform:scale(1)}}
+  #remaining{font-weight:700;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>주주우대 10만명 이벤트</h2>
+  <p>하루 3번 응모 가능</p>
+  <input id="name" placeholder="이름" />
+  <input id="phone" placeholder="휴대폰 (숫자만)" />
+  <div>
+    <button id="applyBtn" onclick="submitForm()">응모하기</button>
+  </div>
+  <p id="remaining">남은 응모: -</p>
+  <p id="resultMsg"></p>
+</div>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwxeFBNxThXfvA6sxO9tHIfF6KH3ZYtzz6q-7j5Zz2hpfJeLJIrxXFaKP7DxDKC7W7W/exec";
+const MAX_TRIES = 3;
+
+// 오늘 날짜 키 생성 (한국시간 기준)
+function getTodayKey() {
+  const now = new Date();
+  const tzOffset = 9 * 60 * 60000; // +9시간
+  const todayKST = new Date(now.getTime() + tzOffset);
+  const yyyy = todayKST.getUTCFullYear();
+  const mm = String(todayKST.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(todayKST.getUTCDate()).padStart(2, '0');
+  return `tries_${yyyy}-${mm}-${dd}`;
+}
+
+// 현재 응모횟수 가져오기
+function getTryCount() {
+  const todayKey = getTodayKey();
+  const storedDate = localStorage.getItem('lastDate');
+  // 날짜가 바뀌면 자동 리셋
+  if (storedDate !== todayKey) {
+    localStorage.clear();
+    localStorage.setItem('lastDate', todayKey);
+    return 0;
+  }
+  return parseInt(localStorage.getItem(todayKey) || '0', 10);
+}
+
+// 응모횟수 저장
+function setTryCount(n) {
+  const todayKey = getTodayKey();
+  localStorage.setItem(todayKey, n);
+  localStorage.setItem('lastDate', todayKey);
+  updateRemainingDisplay();
+}
+
+function updateRemainingDisplay() {
+  const rem = Math.max(0, MAX_TRIES - getTryCount());
+  document.getElementById('remaining').innerText = `남은 응모: ${rem}회`;
+}
+
+async function submitForm() {
+  const name = document.getElementById("name").value.trim();
+  const phone = document.getElementById("phone").value.trim();
+  const btn = document.getElementById("applyBtn");
+  const msg = document.getElementById("resultMsg");
+
+  if (!name || !phone) {
+    msg.innerText = "이름과 전화번호를 입력해주세요.";
+    return;
+  }
+
+  const currentCount = getTryCount();
+  if (currentCount >= MAX_TRIES) {
+    msg.innerText = "오늘 응모 횟수를 초과했습니다. 내일 다시 응모하세요.";
+    return;
+  }
+
+  // 버튼 애니
+  btn.classList.add('flash');
+  setTimeout(()=>btn.classList.remove('flash'),900);
+
+  // 요청: Content-Type을 text/plain으로 설정 -> preflight 회피
+  let payload = { name, phone, try_count: currentCount + 1, date: new Date().toISOString().split('T')[0] };
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" }, // <-- 중요: application/json 대신 text/plain
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json().catch(()=>({ status: 'error', message: '응답 파싱 실패 (non-json)' }));
+
+    if (data.status === "success") {
+      // 성공일 때만 카운트 증가
+      setTryCount(currentCount + 1);
+      msg.innerText = "정상 응모되었습니다! 🎉";
+    } else {
+      // 서버가 에러를 줌 -> 카운트 변경 안함
+      msg.innerText = "오류 발생: " + (data.message || "서버 오류");
+      console.error('server error body', data);
+    }
+  } catch (err) {
+    console.error('fetch error', err);
+    msg.innerText = "서버 오류가 발생했습니다. 다시 시도해주세요.";
+    // 네트워크/서버 에러 발생 시 카운트는 건드리지 않음
+  }
+}
+
+updateRemainingDisplay();
+</script>
+</body>
+</html>
