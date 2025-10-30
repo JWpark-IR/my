@@ -18,10 +18,10 @@
 <div class="container">
   <h2>주주우대 이용자</h2>
   <h2>10만명 기념 이벤트🎁</h2>
-  <p>하루 3번까지 응모 가능!</p>
+  <p>하루 3번 매일 응모 가능!</p>
   <p>응모 후 <u>3초</u> 기다려주세요!</p>
   <input id="name" placeholder="이름" />
-  <input id="phone" placeholder="휴대폰 (숫자만)" />
+  <input id="phone" placeholder="휴대폰번호(- 제외하고 숫자만)" />
   <div>
     <button id="applyBtn" onclick="submitForm()">응모하기</button>
   </div>
@@ -46,38 +46,7 @@ function getTodayKey() {
 
 // 현재 응모횟수 가져오기
 function getTryCount() {
-  const todayKey = getTodayKey();
-  const storedDate = localStorage.getItem('lastDate');
-  // 날짜가 바뀌면 자동 리셋
-  if (storedDate !== todayKey) {
-    localStorage.clear();
-    localStorage.setItem('lastDate', todayKey);
-    return 0;
-  }
-  return parseInt(localStorage.getItem(todayKey) || '0', 10);
-}
-
-// 응모횟수 저장
-function setTryCount(n) {
-  const todayKey = getTodayKey();
-  localStorage.setItem(todayKey, n);
-  localStorage.setItem('lastDate', todayKey);
-  updateRemainingDisplay();
-}
-
-function updateRemainingDisplay() {
-  const rem = Math.max(0, MAX_TRIES - getTryCount());
-  document.getElementById('remaining').innerText = `남은 응모: ${rem}회`;
-}
-
-async function submitForm() {
-  const name = document.getElementById("name").value.trim();
-  const phone = document.getElementById("phone").value.trim();
-  const btn = document.getElementById("applyBtn");
-  const msg = document.getElementById("resultMsg");
-
-  if (!name || !phone) {
-    msg.innerText = "이름과 전화번호를 입력해주세요.";
+  const todayKey = getTodayKey()폰번호를 입력해주세요.";
     return;
   }
 
@@ -123,6 +92,7 @@ updateRemainingDisplay();
 </script>
 </body>
 </html>
+
 
 
 
